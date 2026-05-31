@@ -138,6 +138,8 @@ with st.spinner("Analyzing live market trends safely via data cache..."):
                 "Company": name,
                 "Ticker": ticker,
                 "Price ($)": round(latest_close, 2),
+                f"Forecasted Price ({forecast_days}d)": round(
+                        future_predicted["yhat"], 2),
                 "RSI": round(latest_rsi, 2),
                 "P/E": round(pe_ratio, 2) if pe_ratio else "N/A",
                 "PEG": round(peg_ratio, 2) if peg_ratio else "N/A",
