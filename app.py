@@ -65,14 +65,35 @@ if refresh_button or "initialized" not in st.session_state:
     # Status indicator loading spinner
     with st.spinner("Fetching live market data and calculating forecasts..."):
         for name, ticker in tickers.items():
+            # 1. Fetch historical data for Prophet and RSI
             df = yf.download(ticker, start=start_date, end=end_date)
             if df.empty:
                 continue
-
             # Handle multi-index columns if present
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = df.columns.get_level_values(0)
             df = df.reset_index()
+
+            # 2. Fetch fundamental data ratios using yf.Ticker
+            ticker_obj = yf.Ticker(ticker)
+            info = ticker_obj.info
+
+            # Extract metrics safely
+            pe_ratio = info.get("trailingPE") or info.get("forwardPE")
+            peg_ratio = info.get("pegRatio")
+            ps_ratio = info.get("priceToSalesTrailing12Months")
+            roe = info.get("returnOnEquity")
+            op_margin = info.get("operatingMargins")
+
+            # Fetch and convert Debt-to-Equity (returns as 100+ for 100% debt-to-equity)
+            raw_de = info.get("debtToEquity")
+            de_ratio = round(raw_de / 100, 2) if raw_de is not None else "N/A"
+
+            # Convert fractional percentages to clear standard formats
+            roe_formatted = f"{roe * 100:.2f}%" if roe is not None else "N/A"
+            margin_formatted = (
+                f"{op_margin * 100:.2f}%" if op_margin is not None else "N/A"
+            )
 
             # Technical Analysis Metrics
             df["RSI"] = calculate_rsi(df["Close"], window=rsi_window)
@@ -108,15 +129,19 @@ if refresh_button or "initialized" not in st.session_state:
             else:
                 signal = "⚪ Hold / Neutral"
 
+           # Append data to summary matrix
             summary_data.append(
                 {
                     "Company": name,
                     "Ticker": ticker,
-                    "Current Price ($)": round(latest_close, 2),
-                    f"RSI ({rsi_window}d)": round(latest_rsi, 2),
-                    f"Forecasted Price ({forecast_days}d)": round(
-                        future_predicted["yhat"], 2
-                    ),
+                    "Price ($)": round(latest_close, 2),
+                    "RSI": round(latest_rsi, 2),
+                    "P/E": round(pe_ratio, 2) if pe_ratio else "N/A",
+                    "PEG": round(peg_ratio, 2) if peg_ratio else "N/A",
+                    "P/S": round(ps_ratio, 2) if ps_ratio else "N/A",
+                    "ROE": roe_formatted,
+                    "Op. Margin": margin_formatted,
+                    "D/E Ratio": de_ratio,  # New Leverage Ratio Column
                     "Expected Move (%)": round(pred_change_pct, 2),
                     "Action Signal": signal,
                 }
