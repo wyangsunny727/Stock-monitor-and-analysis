@@ -120,11 +120,11 @@ if refresh_button or "initialized" not in st.session_state:
             ) * 100
 
             # Dynamic Decision Rules Matrix
-            if latest_rsi < 35 and pred_change_pct > 0:
+            if latest_rsi < 35 and pred_change_pct > 0 and pe_ratio < 80:
                 signal = "🟢 Strong Buy (Oversold & Upward Trend)"
-            elif latest_rsi < 45 or pred_change_pct > 5:
+            elif latest_rsi < 45 and pe_ratio < 80 or pred_change_pct > 5 and pe_ratio < 80:
                 signal = "🟡 Accumulate / Buy Dip"
-            elif latest_rsi > 70:
+            elif latest_rsi > 70
                 signal = "🔴 Overbought (Wait for Pullback)"
             else:
                 signal = "⚪ Hold / Neutral"
@@ -135,6 +135,8 @@ if refresh_button or "initialized" not in st.session_state:
                     "Company": name,
                     "Ticker": ticker,
                     "Price ($)": round(latest_close, 2),
+                    f"Forecasted Price ({forecast_days}d)": round(
+                        future_predicted["yhat"], 2),
                     "RSI": round(latest_rsi, 2),
                     "P/E": round(pe_ratio, 2) if pe_ratio else "N/A",
                     "PEG": round(peg_ratio, 2) if peg_ratio else "N/A",
