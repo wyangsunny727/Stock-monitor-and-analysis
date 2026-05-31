@@ -124,7 +124,7 @@ if refresh_button or "initialized" not in st.session_state:
                 signal = "🟢 Strong Buy (Oversold & Upward Trend)"
             elif latest_rsi < 45 and pe_ratio < 80 or pred_change_pct > 5 and pe_ratio < 80:
                 signal = "🟡 Accumulate / Buy Dip"
-            elif latest_rsi > 70
+            elif latest_rsi > 70:
                 signal = "🔴 Overbought (Wait for Pullback)"
             else:
                 signal = "⚪ Hold / Neutral"
