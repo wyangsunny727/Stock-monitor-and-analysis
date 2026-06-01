@@ -1,4 +1,5 @@
 import datetime
+import time  # For safe API throttling
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -35,20 +36,19 @@ tickers = {
 
 
 # --- CACHED FUNCTIONS TO PREVENT YFINANCE RATE LIMITS ---
-# ttl=3600 caches the market data for exactly 1 hour (3600 seconds)
 @st.cache_data(ttl=3600)
-def fetch_stock_history(ticker, start, end):
-    df = yf.download(ticker, start=start, end=end)
-    if df.empty:
-        return None
-    if isinstance(df.columns, pd.MultiIndex):
-        df.columns = df.columns.get_level_values(0)
-    return df.reset_index()
+def fetch_all_historical_data(ticker_dict, start, end):
+    """Downloads historical data for ALL tickers simultaneously in 1 network request"""
+    symbols = list(ticker_dict.values())
+    all_data = yf.download(symbols, start=start, end=end)
+    return all_data
 
 
 @st.cache_data(ttl=3600)
 def fetch_stock_fundamentals(ticker):
+    """Fetches info for one ticker with a brief delay to prevent public cloud rate limiting"""
     try:
+        time.sleep(0.5)  # Polite API gap
         ticker_obj = yf.Ticker(ticker)
         return ticker_obj.info
     except Exception:
@@ -75,13 +75,28 @@ summary_data = []
 charts_dict = {}
 
 with st.spinner("Analyzing live market trends safely via data cache..."):
+    # Step 1: Bulk historical download in single action
+    bulk_historical = fetch_all_historical_data(
+        tickers, start=start_date, end=end_date
+    )
+
+    # Step 2: Process metrics
     for name, ticker in tickers.items():
-        # 1. Fetch historical data safely via cache
-        df = fetch_stock_history(ticker, start=start_date, end=end_date)
-        if df is None or df.empty:
+        # Extract individual slice from bulk download
+        if isinstance(bulk_historical.columns, pd.MultiIndex):
+            try:
+                df = bulk_historical.xs(ticker, level=1, axis=1).reset_index()
+            except KeyError:
+                continue
+        else:
+            df = bulk_historical.reset_index()
+
+        if df.empty or "Close" not in df.columns:
             continue
 
-        # 2. Fetch fundamentals safely via cache
+        df = df.dropna(subset=["Close"])
+
+        # Fetch fundamentals safely
         info = fetch_stock_fundamentals(ticker)
 
         # Extract fundamental metrics
@@ -123,10 +138,14 @@ with st.spinner("Analyzing live market trends safely via data cache..."):
             (future_predicted["yhat"] - latest_close) / latest_close
         ) * 100
 
-        # Signal Matrix
-        if latest_rsi < 35 and pred_change_pct > 0 and pe_ratio < 80:
+        # --- FIX: SAFE LOGICAL EVALUATIONS & PRECEDENCE OVERRIDES ---
+        has_safe_pe = pe_ratio is not None and pe_ratio < 80
+
+        if latest_rsi < 35 and pred_change_pct > 0 and has_safe_pe:
             signal = "🟢 Strong Buy"
-        elif latest_rsi < 45 or pred_change_pct > 5 and pe_ratio < 80:
+        elif (latest_rsi < 45 and has_safe_pe) or (
+            pred_change_pct > 5 and has_safe_pe
+        ):
             signal = "🟡 Accumulate"
         elif latest_rsi > 70:
             signal = "🔴 Overbought"
@@ -139,7 +158,8 @@ with st.spinner("Analyzing live market trends safely via data cache..."):
                 "Ticker": ticker,
                 "Price ($)": round(latest_close, 2),
                 f"Forecasted Price ({forecast_days}d)": round(
-                        future_predicted["yhat"], 2),
+                    future_predicted["yhat"], 2
+                ),
                 "RSI": round(latest_rsi, 2),
                 "P/E": round(pe_ratio, 2) if pe_ratio else "N/A",
                 "PEG": round(peg_ratio, 2) if peg_ratio else "N/A",
