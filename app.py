@@ -124,11 +124,10 @@ with st.spinner("Analyzing live market trends safely via data cache..."):
         ) * 100
 
         # Signal Matrix
-		has_good_pe = pe_ratio is not None and pe_ratio < 80
-        if latest_rsi < 35 and pred_change_pct > 0:
+        if latest_rsi < 35 and pred_change_pct > 0 and pe_ratio is not None and pe_ratio < 80:
             signal = "🟢 Strong Buy"
-        elif (latest_rsi < 45 and has_good_pe) or (
-            pred_change_pct > 5 and has_good_pe):
+        elif (latest_rsi < 45 and pe_ratio is not None and pe_ratio < 80) or (
+            pred_change_pct > 5 and pe_ratio is not None and pe_ratio < 80):
             signal = "🟡 Accumulate"
         elif latest_rsi > 70:
             signal = "🔴 Overbought"
@@ -140,7 +139,7 @@ with st.spinner("Analyzing live market trends safely via data cache..."):
                 "Company": name,
                 "Ticker": ticker,
                 "Price ($)": round(latest_close, 2),
-		f"Forecasted Price ({forecast_days}d)": round(
+				f"Forecasted Price ({forecast_days}d)": round(
                         future_predicted["yhat"], 2),
                 "RSI": round(latest_rsi, 2),
                 "P/E": round(pe_ratio, 2) if pe_ratio else "N/A",
