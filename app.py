@@ -31,7 +31,6 @@ tickers = {
     "AMD": "AMD",
     "Micron Technology": "MU",
     "Taiwan Semi": "TSM",
-    "Northern Trust": "NTRS",
 }
 
 
