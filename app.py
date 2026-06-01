@@ -126,7 +126,7 @@ with st.spinner("Analyzing live market trends safely via data cache..."):
         # Signal Matrix
         if latest_rsi < 35 and pred_change_pct > 0  and pe_ratio < 80:
             signal = "🟢 Strong Buy"
-        elif (latest_rsi < 45 or pred_change_pct > 5) and pe_ratio < 80:
+        elif latest_rsi < 45 or pred_change_pct > 5 and pe_ratio < 80:
             signal = "🟡 Accumulate"
         elif latest_rsi > 70:
             signal = "🔴 Overbought"
