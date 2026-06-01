@@ -122,6 +122,11 @@ with st.spinner("Analyzing live market trends safely via data cache..."):
             continue
 
         df = df.dropna(subset=["Close"])
+        
+        # Guard against empty or near-empty DataFrames
+        if len(df) < 20:
+            continue
+
         latest_close = float(df["Close"].iloc[-1])
 
         # Fetch fundamentals and calendar timelines securely
