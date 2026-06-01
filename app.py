@@ -1,4 +1,5 @@
 import datetime
+import time  # Imported for throttling
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -6,20 +7,9 @@ from prophet import Prophet
 import streamlit as st
 import yfinance as yf
 
-# Set up the web page configurations
-st.set_page_config(page_title="Stock Forecast Dashboard", layout="wide")
-st.title("📈 Stock Price Forecasting & Fundamental Analysis Dashboard")
+# ... Keep your page config, sidebar sliders, and calculation functions the same ...
 
-# Sidebar Configurations
-st.sidebar.header("Dashboard Controls")
-forecast_days = st.sidebar.slider(
-    "Forecast Horizon (Days)", min_value=30, max_value=180, value=90, step=15
-)
-rsi_window = st.sidebar.slider(
-    "RSI Calculation Window (Days)", min_value=7, max_value=21, value=14
-)
-
-# Ticker List
+# Expand your list as much as you want now!
 tickers = {
     "Google": "GOOG",
     "Palantir": "PLTR",
@@ -31,58 +21,69 @@ tickers = {
     "AMD": "AMD",
     "Apple": "AAPL",
     "Taiwan Semi": "TSM",
+    "Netflix": "NFLX",
 }
 
+start_date = "2016-01-01"
+end_date = datetime.date.today().strftime("%Y-%m-%d")
 
-# --- CACHED FUNCTIONS TO PREVENT YFINANCE RATE LIMITS ---
-# ttl=3600 caches the market data for exactly 1 hour (3600 seconds)
+
+# --- NEW GENERATION BATCH FETCHING TO BYPASS RATE LIMITS ---
 @st.cache_data(ttl=3600)
-def fetch_stock_history(ticker, start, end):
-    df = yf.download(ticker, start=start, end=end)
-    if df.empty:
-        return None
-    if isinstance(df.columns, pd.MultiIndex):
-        df.columns = df.columns.get_level_values(0)
-    return df.reset_index()
+def fetch_all_historical_data(ticker_dict, start, end):
+    """Downloads historical data for ALL tickers simultaneously in 1 network request"""
+    symbols = list(ticker_dict.values())
+    # This downloads everything at once, drastically reducing network hits
+    all_data = yf.download(symbols, start=start, end=end)
+    return all_data
 
 
 @st.cache_data(ttl=3600)
-def fetch_stock_fundamentals(ticker):
+def fetch_single_fundamental(ticker):
+    """Fetches info for one ticker, safely falling back if blocked"""
     try:
-        ticker_obj = yf.Ticker(ticker)
-        return ticker_obj.info
+        # Add a tiny 0.5-second break so we don't bombard Yahoo's servers
+        time.sleep(0.5)
+        return yf.Ticker(ticker).info
     except Exception:
         return {}
-
-
-# Helper function to calculate RSI
-def calculate_rsi(data, window=14):
-    delta = data.diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
-    rs = gain / (loss + 1e-9)
-    return 100 - (100 / (1 + rs))
 
 
 # Add manual button which clears the cache when clicked
 if st.sidebar.button("🔄 Force Clear Cache & Refresh Data"):
     st.cache_data.clear()
 
-start_date = "2016-01-01"
-end_date = datetime.date.today().strftime("%Y-%m-%d")
-
 summary_data = []
 charts_dict = {}
 
-with st.spinner("Analyzing live market trends safely via data cache..."):
+with st.spinner("Processing batch financial matrix safely..."):
+    # Step 1: Download ALL historical data in ONE shot
+    bulk_historical = fetch_all_historical_data(
+        tickers, start=start_date, end=end_date
+    )
+
+    # Step 2: Loop through to process calculations
     for name, ticker in tickers.items():
-        # 1. Fetch historical data safely via cache
-        df = fetch_stock_history(ticker, start=start_date, end=end_date)
-        if df is None or df.empty:
+
+        # Extract this stock's specific historical data from the bulk download
+        if isinstance(bulk_historical.columns, pd.MultiIndex):
+            # If multi-index, extract just the Close column for this ticker
+            try:
+                df_stock = bulk_historical.xs(ticker, level=1, axis=1).reset_index()
+            except KeyError:
+                continue
+        else:
+            # Fallback if only one stock was downloaded
+            df_stock = bulk_historical.reset_index()
+
+        if df_stock.empty or "Close" not in df_stock.columns:
             continue
 
-        # 2. Fetch fundamentals safely via cache
-        info = fetch_stock_fundamentals(ticker)
+        # Drop any rows where Close is NaN (e.g., if a stock didn't exist in 2018)
+        df_stock = df_stock.dropna(subset=["Close"])
+
+        # Fetch fundamentals with built-in sleep throttling
+        info = fetch_single_fundamental(ticker)
 
         # Extract fundamental metrics
         pe_ratio = info.get("trailingPE") or info.get("forwardPE")
@@ -91,23 +92,21 @@ with st.spinner("Analyzing live market trends safely via data cache..."):
         roe = info.get("returnOnEquity")
         op_margin = info.get("operatingMargins")
 
-        # Fetch and convert Debt-to-Equity
         raw_de = info.get("debtToEquity")
         de_ratio = round(raw_de / 100, 2) if raw_de is not None else "N/A"
 
-        # Convert fractional percentages
         roe_formatted = f"{roe * 100:.2f}%" if roe is not None else "N/A"
         margin_formatted = (
             f"{op_margin * 100:.2f}%" if op_margin is not None else "N/A"
         )
 
-        # Technical Analysis
-        df["RSI"] = calculate_rsi(df["Close"], window=rsi_window)
-        latest_rsi = df["RSI"].iloc[-1]
-        latest_close = df["Close"].iloc[-1]
+        # Technical Analysis (RSI) using the local extracted dataframe
+        df_stock["RSI"] = calculate_rsi(df_stock["Close"], window=rsi_window)
+        latest_rsi = df_stock["RSI"].iloc[-1]
+        latest_close = df_stock["Close"].iloc[-1]
 
         # Prophet Modeling
-        prophet_df = df[["Date", "Close"]].rename(
+        prophet_df = df_stock[["Date", "Close"]].rename(
             columns={"Date": "ds", "Close": "y"}
         )
         prophet_df["ds"] = pd.to_datetime(prophet_df["ds"]).dt.tz_localize(None)
@@ -123,10 +122,13 @@ with st.spinner("Analyzing live market trends safely via data cache..."):
             (future_predicted["yhat"] - latest_close) / latest_close
         ) * 100
 
-        # Signal Matrix
-        if latest_rsi < 35 and pred_change_pct > 0 and pe_ratio < 80:
+        # Safe Signal Matrix Evaluation
+        has_good_pe = pe_ratio is not None and pe_ratio < 80
+        if latest_rsi < 35 and pred_change_pct > 0 and has_good_pe:
             signal = "🟢 Strong Buy"
-        elif latest_rsi < 45 and pe_ratio < 80 or pred_change_pct > 5 and pe_ratio < 80:
+        elif (latest_rsi < 45 and has_good_pe) or (
+            pred_change_pct > 5 and has_good_pe
+        ):
             signal = "🟡 Accumulate"
         elif latest_rsi > 70:
             signal = "🔴 Overbought"
@@ -138,7 +140,7 @@ with st.spinner("Analyzing live market trends safely via data cache..."):
                 "Company": name,
                 "Ticker": ticker,
                 "Price ($)": round(latest_close, 2),
-                f"Forecasted Price ({forecast_days}d)": round(
+		f"Forecasted Price ({forecast_days}d)": round(
                         future_predicted["yhat"], 2),
                 "RSI": round(latest_rsi, 2),
                 "P/E": round(pe_ratio, 2) if pe_ratio else "N/A",
