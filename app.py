@@ -29,7 +29,6 @@ tickers = {
     "Nokia": "NOK",
     "Nvidia": "NVDA",
     "AMD": "AMD",
-    "Northern Trust": "NTRS",
     "Apple": "AAPL",
     "Taiwan Semi": "TSM",
 }
