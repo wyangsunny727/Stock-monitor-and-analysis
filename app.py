@@ -45,14 +45,42 @@ def fetch_all_historical_data(ticker_dict, start, end):
 
 
 @st.cache_data(ttl=3600)
-def fetch_stock_fundamentals(ticker):
-    """Fetches info for one ticker with a brief delay to prevent public cloud rate limiting"""
+def fetch_stock_fundamentals_and_calendar(ticker):
+    """Fetches fundamental info safely using custom request sessions to bypass blocks"""
     try:
-        time.sleep(0.5)  # Polite API gap
-        ticker_obj = yf.Ticker(ticker)
-        return ticker_obj.info
+        time.sleep(0.5)  # Polite pause to prevent rate limits
+        
+        # FIX: Create a session with a realistic User-Agent to prevent getting an empty dict
+        import requests
+        session = requests.Session()
+        session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        })
+        
+        ticker_obj = yf.Ticker(ticker, session=session)
+        info_dict = ticker_obj.info if ticker_obj.info else {}
+
+        # Safely attempt parsing next earnings date
+        earnings_date_str = "N/A"
+        try:
+            if hasattr(ticker_obj, "calendar") and ticker_obj.calendar is not None:
+                cal = ticker_obj.calendar
+                if isinstance(cal, dict) and "Earnings Date" in cal:
+                    dates = cal["Earnings Date"]
+                    if dates:
+                        earnings_date_str = dates[0].strftime("%Y-%m-%d")
+                elif isinstance(cal, pd.DataFrame) and "Value" in cal.index:
+                    earnings_date_str = cal.loc["Earnings Date"].values[0].strftime("%Y-%m-%d")
+        except Exception:
+            if "calendarOutputs" in info_dict:
+                cal_out = info_dict.get("calendarOutputs", {})
+                if "earningsDate" in cal_out and cal_out["earningsDate"]:
+                    earnings_date_str = cal_out["earningsDate"][0]
+
+        info_dict["_next_earnings"] = earnings_date_str
+        return info_dict
     except Exception:
-        return {}
+        return {"_next_earnings": "N/A"}
 
 
 # Helper function to calculate RSI
@@ -75,10 +103,8 @@ summary_data = []
 charts_dict = {}
 
 with st.spinner("Analyzing live market trends safely via data cache..."):
-    # Step 1: Bulk historical download in single action
-    bulk_historical = fetch_all_historical_data(
-        tickers, start=start_date, end=end_date
-    )
+    # Step 1: Bulk historical download
+    bulk_historical = fetch_all_historical_data(tickers, start=start_date, end=end_date)
 
     # Step 2: Process metrics
     for name, ticker in tickers.items():
@@ -95,12 +121,21 @@ with st.spinner("Analyzing live market trends safely via data cache..."):
             continue
 
         df = df.dropna(subset=["Close"])
+        latest_close = float(df["Close"].iloc[-1])
 
-        # Fetch fundamentals safely
-        info = fetch_stock_fundamentals(ticker)
+        # Fetch fundamentals and calendar timelines securely
+        info = fetch_stock_fundamentals_and_calendar(ticker)
+        next_earnings = info.get("_next_earnings", "N/A")
 
-        # Extract fundamental metrics
+        # Extract fundamental metrics with manual calculation backup
         pe_ratio = info.get("trailingPE") or info.get("forwardPE")
+        
+        # BACKUP: Calculate P/E using price and EPS if trailingPE is missing
+        if pe_ratio is None or pe_ratio == "N/A":
+            eps = info.get("trailingEps") or info.get("forwardEps")
+            if eps and eps > 0:
+                pe_ratio = latest_close / eps
+
         peg_ratio = info.get("pegRatio")
         ps_ratio = info.get("priceToSalesTrailing12Months")
         roe = info.get("returnOnEquity")
@@ -112,19 +147,14 @@ with st.spinner("Analyzing live market trends safely via data cache..."):
 
         # Convert fractional percentages
         roe_formatted = f"{roe * 100:.2f}%" if roe is not None else "N/A"
-        margin_formatted = (
-            f"{op_margin * 100:.2f}%" if op_margin is not None else "N/A"
-        )
+        margin_formatted = f"{op_margin * 100:.2f}%" if op_margin is not None else "N/A"
 
         # Technical Analysis
         df["RSI"] = calculate_rsi(df["Close"], window=rsi_window)
         latest_rsi = df["RSI"].iloc[-1]
-        latest_close = df["Close"].iloc[-1]
 
         # Prophet Modeling
-        prophet_df = df[["Date", "Close"]].rename(
-            columns={"Date": "ds", "Close": "y"}
-        )
+        prophet_df = df[["Date", "Close"]].rename(columns={"Date": "ds", "Close": "y"})
         prophet_df["ds"] = pd.to_datetime(prophet_df["ds"]).dt.tz_localize(None)
 
         model = Prophet(daily_seasonality=False, weekly_seasonality=True)
@@ -134,18 +164,14 @@ with st.spinner("Analyzing live market trends safely via data cache..."):
         forecast = model.predict(future)
 
         future_predicted = forecast.iloc[-1]
-        pred_change_pct = (
-            (future_predicted["yhat"] - latest_close) / latest_close
-        ) * 100
+        pred_change_pct = ((future_predicted["yhat"] - latest_close) / latest_close) * 100
 
-        # --- FIX: SAFE LOGICAL EVALUATIONS & PRECEDENCE OVERRIDES ---
+        # Safe logical evaluations
         has_safe_pe = pe_ratio is not None and pe_ratio < 80
 
         if latest_rsi < 35 and pred_change_pct > 0 and has_safe_pe:
             signal = "🟢 Strong Buy"
-        elif (latest_rsi < 45 and has_safe_pe) or (
-            pred_change_pct > 5 and has_safe_pe
-        ):
+        elif (latest_rsi < 45 and has_safe_pe) or (pred_change_pct > 5 and has_safe_pe):
             signal = "🟡 Accumulate"
         elif latest_rsi > 70:
             signal = "🔴 Overbought"
@@ -157,11 +183,10 @@ with st.spinner("Analyzing live market trends safely via data cache..."):
                 "Company": name,
                 "Ticker": ticker,
                 "Price ($)": round(latest_close, 2),
-                f"Forecasted Price ({forecast_days}d)": round(
-                    future_predicted["yhat"], 2
-                ),
+                f"Forecasted Price ({forecast_days}d)": round(future_predicted["yhat"], 2),
+                "Next Earnings": next_earnings,
                 "RSI": round(latest_rsi, 2),
-                "P/E": round(pe_ratio, 2) if pe_ratio else "N/A",
+                "P/E": round(pe_ratio, 2) if isinstance(pe_ratio, (int, float)) else "N/A",
                 "PEG": round(peg_ratio, 2) if peg_ratio else "N/A",
                 "P/S": round(ps_ratio, 2) if ps_ratio else "N/A",
                 "ROE": roe_formatted,
@@ -174,26 +199,9 @@ with st.spinner("Analyzing live market trends safely via data cache..."):
 
         # Build Figure Plots
         fig, ax = plt.subplots(figsize=(10, 4))
-        ax.plot(
-            prophet_df["ds"],
-            prophet_df["y"],
-            label="Historical Close",
-            color="#2F3E46",
-        )
-        ax.plot(
-            forecast["ds"],
-            forecast["yhat"],
-            label="Prophet Forecast",
-            color="#0077B6",
-            linestyle="--",
-        )
-        ax.fill_between(
-            forecast["ds"],
-            forecast["yhat_lower"],
-            forecast["yhat_upper"],
-            color="#0077B6",
-            alpha=0.15,
-        )
+        ax.plot(prophet_df["ds"], prophet_df["y"], label="Historical Close", color="#2F3E46")
+        ax.plot(forecast["ds"], forecast["yhat"], label="Prophet Forecast", color="#0077B6", linestyle="--")
+        ax.fill_between(forecast["ds"], forecast["yhat_lower"], forecast["yhat_upper"], color="#0077B6", alpha=0.15)
         ax.set_title(f"{name} ({ticker}) Forecast Trend")
         ax.grid(True, alpha=0.2)
         ax.legend()
