@@ -31,6 +31,7 @@ tickers = {
     "Nvidia": "NVDA",
     "AMD": "AMD",
     "Apple": "AAPL",
+    "Amazon": "AMZN",
     "Taiwan Semi": "TSM",
 }
 
