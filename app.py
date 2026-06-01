@@ -85,7 +85,8 @@ with st.spinner("Analyzing live market trends safely via data cache..."):
         info = fetch_stock_fundamentals(ticker)
 
         # Extract fundamental metrics
-        pe_ratio = info.get("trailingPE") or info.get("forwardPE")
+        trailing_pe_ratio = info.get("trailingPE") 
+	    forward_pe_ratio=info.get("forwardPE")
         peg_ratio = info.get("pegRatio")
         ps_ratio = info.get("priceToSalesTrailing12Months")
         roe = info.get("returnOnEquity")
@@ -124,9 +125,9 @@ with st.spinner("Analyzing live market trends safely via data cache..."):
         ) * 100
 
         # Signal Matrix
-        if latest_rsi < 35 and pred_change_pct > 0 and pe_ratio < 80:
+        if latest_rsi < 35 and pred_change_pct > 0 and forward_pe_ratio < 80:
             signal = "🟢 Strong Buy"
-        elif latest_rsi < 45 or pred_change_pct > 5 and pe_ratio < 80:
+        elif latest_rsi < 45 or pred_change_pct > 5 and forward_pe_ratio < 80:
             signal = "🟡 Accumulate"
         elif latest_rsi > 70:
             signal = "🔴 Overbought"
@@ -141,7 +142,8 @@ with st.spinner("Analyzing live market trends safely via data cache..."):
                 f"Forecasted Price ({forecast_days}d)": round(
                         future_predicted["yhat"], 2),
                 "RSI": round(latest_rsi, 2),
-                "P/E": round(pe_ratio, 2) if pe_ratio else "N/A",
+                "Forward P/E": round(forward_pe_ratio, 2) if forward_pe_ratio else "N/A",
+                "Trailing P/E": round(trailing_pe_ratio, 2) if trailing_pe_ratio else "N/A",
                 "PEG": round(peg_ratio, 2) if peg_ratio else "N/A",
                 "P/S": round(ps_ratio, 2) if ps_ratio else "N/A",
                 "ROE": roe_formatted,
