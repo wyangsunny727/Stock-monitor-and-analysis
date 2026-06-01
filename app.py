@@ -21,7 +21,6 @@ tickers = {
     "AMD": "AMD",
     "Apple": "AAPL",
     "Taiwan Semi": "TSM",
-    "Netflix": "NFLX",
 }
 
 start_date = "2016-01-01"
