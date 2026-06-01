@@ -14,7 +14,7 @@ st.title("📈 Stock Price Forecasting & Fundamental Analysis Dashboard")
 # Sidebar Configurations
 st.sidebar.header("Dashboard Controls")
 forecast_days = st.sidebar.slider(
-    "Forecast Horizon (Days)", min_value=30, max_value=180, value=90, step=15
+    "Forecast Horizon (Days)", min_value=30, max_value=360, value=90, step=15
 )
 rsi_window = st.sidebar.slider(
     "RSI Calculation Window (Days)", min_value=7, max_value=21, value=14
