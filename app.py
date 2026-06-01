@@ -30,6 +30,7 @@ tickers = {
     "Nvidia": "NVDA",
     "AMD": "AMD",
     "Northern Trust": "NTRS",
+    "Apple": "AAPL",
     "Taiwan Semi": "TSM",
 }
 
