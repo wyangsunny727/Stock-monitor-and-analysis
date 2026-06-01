@@ -187,7 +187,7 @@ with st.spinner("Analyzing live market trends safely via data cache..."):
                 "Next Earnings": next_earnings,
                 "RSI": round(latest_rsi, 2),
                 "P/E": round(pe_ratio, 2) if isinstance(pe_ratio, (int, float)) else "N/A",
-                "PEG": round(peg_ratio, 2) if peg_ratio else "N/A",
+                "PEG (5Y Expected)": round(peg_ratio, 2) if peg_ratio else "N/A",
                 "P/S": round(ps_ratio, 2) if ps_ratio else "N/A",
                 "ROE": roe_formatted,
                 "Op. Margin": margin_formatted,
