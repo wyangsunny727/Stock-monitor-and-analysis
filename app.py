@@ -30,9 +30,15 @@ tickers = {
     "Nokia": "NOK",
     "Nvidia": "NVDA",
     "AMD": "AMD",
+    "Micron Technology": "MU",
     "Apple": "AAPL",
     "Amazon": "AMZN",
-    "Taiwan Semi": "TSM",
+    "Broadcom": "AVGO",
+    "QUALCOMM-Wireless": "QCOM",
+    "Lam Research-Semi Conductor": "LRCX",
+    "KLA-Semi Conductor": "KLAC",
+    "ASML-Semi Comductor": "ASML",
+    "Texas Instruments-Semi Conductor": "TXN",
 }
 
 
