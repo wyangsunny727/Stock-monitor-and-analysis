@@ -23,22 +23,22 @@ rsi_window = st.sidebar.slider(
 # Ticker List
 tickers = {
     "Google": "GOOG",
-    "Palantir": "PLTR",
-    "Microsoft": "MSFT",
-    "Intel": "INTC",
-    "Tesla": "TSLA",
-    "Nokia": "NOK",
     "Nvidia": "NVDA",
+    "Microsoft": "MSFT",
+    "Palantir": "PLTR",
     "AMD": "AMD",
-    "Micron Technology": "MU",
     "Apple": "AAPL",
     "Amazon": "AMZN",
+    "Tesla": "TSLA",
     "Broadcom": "AVGO",
-    "QUALCOMM-Wireless": "QCOM",
-    "Lam Research-Semi Conductor": "LRCX",
-    "KLA-Semi Conductor": "KLAC",
-    "ASML-Semi Comductor": "ASML",
-    "Texas Instruments-Semi Conductor": "TXN",
+    "Nokia": "NOK",
+    "Intel": "INTC",
+    "Micron Tech": "MU",
+    "QUALCOMM(Wireless)": "QCOM",
+    "Lam Research(Semi-Con)": "LRCX",
+    "KLA(Semi-Con)": "KLAC",
+    "ASML(Semi-Con)": "ASML",
+    "Texas Instru(Semi-Con)": "TXN",
 }
 
 
