@@ -14,7 +14,7 @@ st.title("📈 Stock Price Forecasting & Fundamental Analysis Dashboard")
 # Sidebar Configurations
 st.sidebar.header("Dashboard Controls")
 forecast_days = st.sidebar.slider(
-    "Forecast Horizon (Days)", min_value=30, max_value=360, value=90, step=15
+    "Forecast Horizon (Days)", min_value=15, max_value=360, value=60, step=15
 )
 rsi_window = st.sidebar.slider(
     "RSI Calculation Window (Days)", min_value=7, max_value=21, value=14
@@ -22,21 +22,20 @@ rsi_window = st.sidebar.slider(
 
 # Ticker List
 tickers = {
-    "T1 Energy": "TE",
-    "HIVE Digital": "HIVE",
-    "Riot Platform": "RIOT",
-    "Applied Digital": "APLD",
-    "IREN": "IREN",
-    "Bitdeer Tech": "BTDR",
-    "Keel": "KEEL",
-    "CleanSpark": "CLSK",
-    "Sharon AI": "SHAZ",
-    "ProPetro": "PUMP",
-    "Power Solutions": "PSIX",
-    "WhiteFiber": "WYFI",
-    "Core Scientific": "CORZ",
+    "Google": "GOOG",
+    "Nvidia": "NVDA",
+    "Microsoft": "MSFT",
+    "Palantir": "PLTR",
+    "AMD": "AMD",
+    "Apple": "AAPL",
+    "Amazon": "AMZN",
+    "Tesla": "TSLA",
+    "Broadcom": "AVGO",
+    "Nokia": "NOK",
+    "Intel": "INTC",
+    "Micron Tech": "MU",
+    "Marvell": "MRVL",
 }
-
 
 # --- CACHED FUNCTIONS TO PREVENT YFINANCE RATE LIMITS ---
 @st.cache_data(ttl=3600)
