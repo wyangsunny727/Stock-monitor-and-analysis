@@ -22,19 +22,19 @@ rsi_window = st.sidebar.slider(
 
 # Ticker List
 tickers = {
-    "Google": "GOOG",
-    "Nvidia": "NVDA",
-    "Microsoft": "MSFT",
-    "Palantir": "PLTR",
-    "AMD": "AMD",
-    "Apple": "AAPL",
-    "Amazon": "AMZN",
-    "Tesla": "TSLA",
-    "Broadcom": "AVGO",
-    "Nokia": "NOK",
-    "Intel": "INTC",
-    "Micron Tech": "MU",
-    "Marvell": "MRVL",
+    "T1 Energy": "TE",
+    "HIVE Digital": "HIVE",
+    "Riot Platform": "RIOT",
+    "Applied Digital": "APLD",
+    "IREN": "IREN",
+    "Bitdeer Tech": "BTDR",
+    "Keel": "KEEL",
+    "CleanSpark": "CLSK",
+    "Sharon AI": "SHAZ",
+    "ProPetro": "PUMP",
+    "Power Solutions": "PSIX",
+    "WhiteFiber": "WYFI",
+    "Core Scientific": "CORZ",
 }
 
 
