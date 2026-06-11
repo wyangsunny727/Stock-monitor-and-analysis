@@ -35,6 +35,7 @@ tickers = {
     "Intel": "INTC",
     "Micron Tech": "MU",
     "Marvell": "MRVL",
+    "SpaceX": "SPCX",
 }
 
 # --- CACHED FUNCTIONS TO PREVENT YFINANCE RATE LIMITS ---
