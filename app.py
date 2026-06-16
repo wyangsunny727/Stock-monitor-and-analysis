@@ -31,10 +31,11 @@ tickers = {
     "Amazon": "AMZN",
     "Tesla": "TSLA",
     "Broadcom": "AVGO",
-    "Nokia": "NOK",
     "Intel": "INTC",
     "Micron Tech": "MU",
     "Marvell": "MRVL",
+    "MapLight": "MPLT",
+    "Kodiak": "KOD",
 }
 
 # --- CACHED FUNCTIONS TO PREVENT YFINANCE RATE LIMITS ---
