@@ -25,17 +25,17 @@ tickers = {
     "Google": "GOOG",
     "Nvidia": "NVDA",
     "Microsoft": "MSFT",
+    "Taiwan Semiconductor": "TSM",
+    "Broadcom": "AVGO",
+    "Marvell": "MRVL",
+    "MapLight": "MPLT",
+    "Amazon": "AMZN",
     "Palantir": "PLTR",
     "AMD": "AMD",
     "Apple": "AAPL",
-    "Amazon": "AMZN",
     "Tesla": "TSLA",
-    "Broadcom": "AVGO",
     "Intel": "INTC",
     "Micron Tech": "MU",
-    "Marvell": "MRVL",
-    "MapLight": "MPLT",
-    "Kodiak": "KOD",
 }
 
 # --- CACHED FUNCTIONS TO PREVENT YFINANCE RATE LIMITS ---
